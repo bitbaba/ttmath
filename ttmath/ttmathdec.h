@@ -69,30 +69,186 @@ public:
 		if this bit is set that there is not a valid number
 	*/
 	#define TTMATH_DEC_NAN  64
-
-
-
-
+////////////////////////////////////////////
 	Dec()
 	{
 		info = TTMATH_DEC_NAN;
-	}
+    }
 
+    Dec(const char * s)
+    {
+        info = TTMATH_DEC_NAN;
+        FromString(s);
+    }
 
-	Dec(const char * s)
-	{
-		info = TTMATH_DEC_NAN;
-		FromString(s);
-	}
+    Dec(const std::string & s)
+    {
+        info = TTMATH_DEC_NAN;
+        FromString( s.c_str() );
+    }
 
+    Dec(unsigned int i)
+    {
+        info = 0;
+        value = (i);
+    }
 
-	Dec<value_size, dec_digits> & operator=(const char * s)
-	{
-		FromString(s);
+    Dec(signed int i)
+    {
+        info = 0;
+        value = (i < 0) ? -i:i;
+        if (i<0)SetSign();
+    }
+    Dec(uint val) {
+        info = 0;
+        value = val;
+    }
+    Dec(sint val) {
+        info = 0;
+        value = val < 0 ? -val : val;
+        if (val < 0) SetSign();
+    }
+/////////////////////////////////////////
+    Dec & operator=(const char * s)
+    {
+        FromString(s);
+        return *this;
+    }
+    Dec & operator=(const std::string & s)
+    {
+        FromString( s.c_str() );
+        return *this;
+    }
+    Dec & operator=(uint rhs) {
+        value = rhs;
+        return *this;
+    }
+    Dec & operator=(sint rhs) {
+        value = rhs < 0 ? -rhs : rhs;
+        if (rhs < 0) SetSign();
+        return *this;
+    }
+    Dec & operator=(signed int i)
+    {
+        info = 0;
+        value = (i < 0) ? -i : i;
+        if (i<0) SetSign();
+        return *this;
+    }
+    Dec & operator=(unsigned int i)
+    {
+        info = 0;
+        value = (i);
+        return *this;
+    }
+//////////////////////////////////////////////////////
+    bool operator==(const Dec &rhs) const {
+        return (IsSign() == rhs.IsSign() && value == rhs.value);
+    }
 
-	return *this;
-	}
+    bool operator<(const Dec &rhs) const {
+        if (IsSign() == rhs.IsSign()){
+            return IsSign() ? (value > rhs.value) : (value < rhs.value);
+        }else{
+            return IsSign() ? true : false;
+        }
+    }
 
+    bool operator<=(const Dec &rhs) const {
+        return *this==rhs || *this<rhs;
+    }
+
+    bool operator>(const Dec &rhs) const {
+        return !(*this<=rhs);
+    }
+
+    bool operator>=(const Dec &rhs) const {
+        return *this==rhs || *this>rhs;
+    }
+
+    bool operator!=(const Dec &rhs) const {
+        return !(*this == rhs);
+    }
+//////////////////////////////////////////////////////
+    const Dec operator+() const {
+        return *this;
+    }
+    const Dec operator-() const {
+        Dec result = *this;
+        result.SetSign();
+        return result;
+    }
+//////////////////////////////////////////////////////////////
+    const Dec operator+(const Dec &rhs) const {
+        Dec result = *this;
+        result.Add(rhs);
+        return result;
+    }
+    Dec & operator+=(const Dec &rhs) {
+        this->Add(rhs);
+        return *this;
+    }
+    const Dec operator-(const Dec &rhs) const {
+        Dec result = *this;
+        result.Add(-rhs);
+        return result;
+    }
+    Dec & operator-=(const Dec &rhs) {
+        this->Add(-rhs);
+        return *this;
+    }
+/////////////////////////////////////////////////////////////////
+
+    const Dec operator*(const Dec &rhs) const {
+        Dec result = *this;
+        UInt<value_size> multipler; result.SetMultipler(multipler);
+        result.value *= rhs.value;
+        result.value /= multipler;
+        if (result.IsSign() == rhs.IsSign()){
+            result.ClearInfoBit(TTMATH_DEC_SIGN);
+        }else{
+            result.SetSign();
+        }
+        return result;
+    }
+
+    Dec & operator*=(const Dec &rhs) {
+        UInt<value_size> multipler; SetMultipler(multipler);
+        value *= rhs.value;
+        value /= multipler;
+        if (IsSign() == rhs.IsSign()){
+            ClearInfoBit(TTMATH_DEC_SIGN);
+        }else{
+            SetSign();
+        }
+        return *this;
+    }
+
+    const Dec operator/(const Dec &rhs) const {
+        Dec result = *this;
+        UInt<value_size> multipler; result.SetMultipler(multipler);
+        result.value *= multipler;
+        result.value /= rhs.value;
+        if (result.IsSign() == rhs.IsSign()){
+            result.ClearInfoBit(TTMATH_DEC_SIGN);
+        }else{
+            result.SetSign();
+        }
+        return result;
+    }
+
+    Dec & operator/=(const Dec &rhs) {
+        Dec & result = *this;
+        UInt<value_size> multipler; result.SetMultipler(multipler);
+        result.value *= multipler;
+        result.value /= rhs.value;
+        if (result.IsSign() == rhs.IsSign()){
+            result.ClearInfoBit(TTMATH_DEC_SIGN);
+        }else{
+            result.SetSign();
+        }
+        return *this;
+    }
 
 	uint FromString(const char * s, const char ** after_source = 0, bool * value_read = 0)
 	{
@@ -100,10 +256,18 @@ public:
 	}
 
 
-	void ToString(std::string & result) const
+    void ToString(std::string & result) const
 	{
 		ToStringBase(result);
 	}
+
+    std::string ToString() const
+    {
+        std::string result;
+        ToStringBase(result);
+
+    return result;
+    }
 
 
 	/*!
@@ -180,7 +344,6 @@ public:
 	}
 
 
-
 	uint Add(const Dec<value_size, dec_digits> & arg)
 	{
 	uint c = 0;
@@ -215,21 +378,15 @@ public:
 	return (c==0)? 0 : 1;
 	}
 
-/*
-	uint Sub(const Dec<value_size, dec_digits> & arg)
-	{
-	}
-*/
+    /*!
+        output to standard streams
+    */
+    friend std::ostream & operator<<(std::ostream & s, const Dec & l)
+    {
+        return OutputToStream<std::ostream, std::string>(s, l);
+    }
 
 private:
-
-
-
-
-
-
-#ifndef TTMATH_MULTITHREADS
-
 	/*!
 	*/
 	void SetMultipler(UInt<value_size> & result)
@@ -247,53 +404,6 @@ private:
 
 		result = multipler;
 	}
-
-#else
-
-	/*!
-	*/
-	void SetMultipler(UInt<value_size> & result)
-	{
-		// this guardian is initialized before the program runs (static POD type)
-		volatile static sig_atomic_t guardian = 0;
-		static UInt<value_size> * pmultipler;
-	
-		// double-checked locking
-		if( guardian == 0 )
-		{
-			ThreadLock thread_lock;
-
-			// locking
-			if( thread_lock.Lock() )
-			{
-				static UInt<value_size> multipler;
-
-				if( guardian == 0 )
-				{
-					pmultipler = &multipler;
-					multipler = 10;
-					multipler.Pow(dec_digits);
-					guardian = 1;
-				}
-			}
-			else
-			{
-				// there was a problem with locking, we store the result directly in 'result' object
-				result = 10;
-				result.Pow(dec_digits);
-				
-			return;
-			}
-
-			// automatically unlocking
-		}
-
-		result = *pmultipler;
-	}
-
-#endif
-
-
 
 	/*!
 		an auxiliary method for converting from a string
@@ -378,8 +488,6 @@ private:
 	return c;
 	}
 
-
-
 	template<class string_type>
 	void ToStringBase(string_type & result) const
 	{
@@ -409,8 +517,19 @@ private:
 		}
 	}
 
+    /*!
+        an auxiliary method for outputing to standard streams
+    */
+    template<class ostream_type, class string_type>
+    static ostream_type & OutputToStream(ostream_type & s, const Dec & l)
+    {
+    string_type ss;
 
+        l.ToString(ss);
+        s << ss;
 
+    return s;
+    }
 };
 
 
